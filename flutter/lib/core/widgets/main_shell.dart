@@ -126,55 +126,60 @@ class _AppHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 10, 12, 10),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => context.go('/'),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(Icons.spa, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Remedia',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w800,
+          Semantics(
+            label: 'Remedia – accueil',
+            button: true,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => context.go('/'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(9),
                       ),
+                      child: const Icon(Icons.spa, color: Colors.white, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Remedia',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           const Spacer(),
           if (isLoggedIn && profile != null)
-            GestureDetector(
-              onTap: () => context.go('/profile'),
-              child: CircleAvatar(
-                radius: 17,
-                backgroundColor: AppColors.primaryLight,
-                child: Text(
-                  profile!.pseudo.isNotEmpty ? profile!.pseudo[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
+            Semantics(
+              label: 'Mon profil',
+              button: true,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => context.go('/profile'),
+                  child: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: AppColors.primaryLight,
+                    child: Text(
+                      profile!.pseudo.isNotEmpty ? profile!.pseudo[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            )
-          else if (!isLoggedIn)
-            TextButton(
-              onPressed: () => context.push('/login'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: Size.zero,
-              ),
-              child: const Text('Connexion'),
             ),
         ],
       ),

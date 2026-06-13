@@ -74,6 +74,24 @@ final commentsProvider =
   return ref.watch(commentServiceProvider).watchComments(remedyId);
 });
 
+// ── Profil public ─────────────────────────────────────────────────────────────
+
+final publicUserProfileProvider =
+    FutureProvider.autoDispose.family<UserProfile?, String>((ref, uid) {
+  return ref.read(authServiceProvider).fetchProfile(uid);
+});
+
+final publicUserRemediesProvider =
+    FutureProvider.autoDispose.family<List<Remedy>, String>((ref, uid) async {
+  final remedies = await ref.read(remedyServiceProvider).getUserRemedies(uid);
+  return remedies.where((r) => !r.isPrivate).toList();
+});
+
+final publicUserCollectionsProvider =
+    StreamProvider.autoDispose.family<List<UserCollection>, String>((ref, uid) {
+  return ref.watch(collectionServiceProvider).watchCollections(uid);
+});
+
 // ── Remedy by ID ──────────────────────────────────────────────────────────────
 
 final remedyByIdProvider =

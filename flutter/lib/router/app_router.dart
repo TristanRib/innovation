@@ -13,6 +13,7 @@ import '../screens/remedy/remedy_detail_screen.dart';
 import '../screens/remedy/create_remedy_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/collection_detail_screen.dart';
+import '../screens/profile/public_profile_screen.dart';
 import '../screens/remedy/edit_remedy_screen.dart';
 import '../models/user_collection.dart';
 
@@ -41,6 +42,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       // ── Standalone (full screen, no bottom nav) ─────────────────────────────
+      GoRoute(
+        path: '/user/:uid',
+        builder: (context, state) =>
+            PublicProfileScreen(uid: state.pathParameters['uid']!),
+      ),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/create', builder: (_, __) => const CreateRemedyScreen()),

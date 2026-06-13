@@ -263,11 +263,22 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
             children: [
               const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 4),
-              Text(r.authorName,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.textSecondary)),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => context.push('/user/${r.authorId}'),
+                  child: Text(r.authorName,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.primary,
+                          )),
+                ),
+              ),
               const Spacer(),
               const Icon(Icons.calendar_today_outlined,
                   size: 14, color: AppColors.textSecondary),
@@ -564,9 +575,12 @@ class _CommentTile extends ConsumerWidget {
                           ?.copyWith(color: AppColors.textSecondary),
                     ),
                     if (isOwn) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () async {
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                        tooltip: 'Supprimer',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        onPressed: () async {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (_) => AlertDialog(
@@ -592,12 +606,14 @@ class _CommentTile extends ConsumerWidget {
                                 .deleteComment(comment.remedyId, comment.id);
                           }
                         },
-                        child: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
                       ),
                     ] else if (authUser != null) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () async {
+                      IconButton(
+                        icon: const Icon(Icons.flag_outlined, size: 16, color: AppColors.textSecondary),
+                        tooltip: 'Signaler',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        onPressed: () async {
                           await ref
                               .read(commentServiceProvider)
                               .reportComment(comment.remedyId, comment.id, authUser.uid);
@@ -607,7 +623,6 @@ class _CommentTile extends ConsumerWidget {
                             );
                           }
                         },
-                        child: const Icon(Icons.flag_outlined, size: 16, color: AppColors.textSecondary),
                       ),
                     ],
                   ],

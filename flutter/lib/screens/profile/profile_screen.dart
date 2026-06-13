@@ -201,9 +201,10 @@ class _ProfileHeader extends ConsumerWidget {
                           ),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined,
-                              size: 15, color: AppColors.textTertiary),
-                          padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(),
+                              size: 16, color: AppColors.textTertiary),
+                          tooltip: 'Modifier le pseudo',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                           onPressed: () =>
                               _showEditPseudoDialog(context, widgetRef, profile.pseudo),
                         ),
