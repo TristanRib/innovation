@@ -1,0 +1,71 @@
+# ── Remedia CI / CD — Firebase Hosting ───────────────────────────────────────
+#
+# Secrets GitHub à configurer (Settings > Secrets > Actions) :
+#   GROQ_API_KEY    — clé API Groq (console.groq.com)
+#   FIREBASE_TOKEN  — obtenu en exécutant : firebase login:ci
+#
+# Comportement :
+#   push main    → analyse + build + deploy production Firebase Hosting
+#   pull_request → analyse uniquement
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Analyse & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Flutter ───────────────────────────────────────────────────────────
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.3'
+          channel: stable
+          cache: true
+
+      # ── 3. config.dart depuis secrets ────────────────────────────────────────
+      - name: Create config.dart
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          cat > flutter/lib/config.dart << EOF
+          class AppConfig {
+            static const groqApiKey = '${GROQ_API_KEY}';
+            static const groqModel = 'llama-3.3-70b-versatile';
+            static const groqBaseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+          }
+          EOF
+
+      # ── 4. Dépendances ───────────────────────────────────────────────────────
+      - name: Flutter pub get
+        run: flutter pub get
+        working-directory: flutter
+
+      # ── 5. Analyse statique ──────────────────────────────────────────────────
+      - name: Flutter analyze
+        run: flutter analyze --no-fatal-infos
+        working-directory: flutter
+
+      # ── 6. Build web (push main uniquement) ──────────────────────────────────
+      - name: Flutter build web
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: flutter build web --release --web-renderer html
+        working-directory: flutter
+
+      # ── 7. Deploy Firebase Hosting ────────────────────────────────────────────
+      - name: Deploy to Firebase Hosting
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: npx firebase-tools deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }} --project innovation-dda6d
+        working-directory: flutter
