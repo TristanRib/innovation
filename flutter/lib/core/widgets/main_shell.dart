@@ -21,10 +21,9 @@ class MainShell extends ConsumerWidget {
     if (location.startsWith('/search')) selectedIndex = 1;
     if (location.startsWith('/profile')) selectedIndex = 2;
 
-    return SelectionArea(
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
           bottom: false,
           child: Column(
             children: [
@@ -110,8 +109,7 @@ class MainShell extends ConsumerWidget {
               )
             : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      ),
-    );
+      );
   }
 }
 
