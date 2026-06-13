@@ -1,0 +1,426 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import '../../models/remedy.dart';
+import '../../models/comment.dart';
+import '../../providers/providers.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/medical_disclaimer.dart';
+import '../../core/widgets/loading_widget.dart';
+import 'widgets/ai_analysis_widget.dart';
+
+class RemedyDetailScreen extends ConsumerStatefulWidget {
+  final Remedy remedy;
+  const RemedyDetailScreen({super.key, required this.remedy});
+
+  @override
+  ConsumerState<RemedyDetailScreen> createState() => _RemedyDetailScreenState();
+}
+
+class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
+  final _commentCtrl = TextEditingController();
+  bool _submittingComment = false;
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitComment() async {
+    final content = _commentCtrl.text.trim();
+    if (content.isEmpty) return;
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user == null) {
+      context.push('/login');
+      return;
+    }
+    final profile = await ref.read(currentUserProfileProvider.future);
+    setState(() => _submittingComment = true);
+    try {
+      await ref.read(commentServiceProvider).addComment(
+            remedyId: widget.remedy.id,
+            authorId: user.uid,
+            authorName: profile?.pseudo ?? 'Anonyme',
+            content: content,
+          );
+      _commentCtrl.clear();
+    } finally {
+      if (mounted) setState(() => _submittingComment = false);
+    }
+  }
+
+  Future<void> _rate(double stars) async {
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user == null) {
+      context.push('/login');
+      return;
+    }
+    await ref.read(remedyServiceProvider).rateRemedy(
+          widget.remedy.id,
+          user.uid,
+          stars.round(),
+        );
+    ref.invalidate(userRatingProvider(widget.remedy.id));
+  }
+
+  void _showReportDialog() {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Signaler ce remède'),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: const InputDecoration(labelText: 'Motif du signalement'),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () async {
+              final user = ref.read(authStateProvider).valueOrNull;
+              if (user != null) {
+                await ref.read(remedyServiceProvider).reportRemedy(
+                      widget.remedy.id,
+                      user.uid,
+                      reasonCtrl.text,
+                    );
+              }
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Signalement envoyé, merci.')),
+                );
+              }
+            },
+            child: const Text('Signaler'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.remedy;
+    final commentsAsync = ref.watch(commentsProvider(r.id));
+    final userRatingAsync = ref.watch(userRatingProvider(r.id));
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(r.title, overflow: TextOverflow.ellipsis),
+        actions: [
+          if (authUser != null)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Signaler',
+              onPressed: _showReportDialog,
+            ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (r.imageUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(r.imageUrl!, height: 200, fit: BoxFit.cover),
+            ),
+          if (r.imageUrl != null) const SizedBox(height: 16),
+
+          // Disclaimer
+          const MedicalDisclaimer(),
+          const SizedBox(height: 16),
+
+          // Tags
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: r.tags.map((t) => Chip(label: Text(t))).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          // Description
+          Text('Description', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(r.description, style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 20),
+
+          // Ingredients
+          Text('Ingrédients', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          ...r.ingredients.map(
+            (ing) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  const Icon(Icons.fiber_manual_record, size: 8, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(ing, style: Theme.of(context).textTheme.bodyLarge)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Method
+          Text('Préparation', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(r.method, style: Theme.of(context).textTheme.bodyLarge),
+          ),
+          const SizedBox(height: 20),
+
+          // Analyse IA
+          AiAnalysisWidget(remedy: r),
+          const SizedBox(height: 20),
+
+          // Rating
+          _RatingSection(
+            remedy: r,
+            userRatingAsync: userRatingAsync,
+            onRate: _rate,
+          ),
+          const Divider(height: 32),
+
+          // Meta
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(r.authorName,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.textSecondary)),
+              const Spacer(),
+              const Icon(Icons.calendar_today_outlined,
+                  size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                DateFormat('dd/MM/yyyy').format(r.createdAt),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          const Divider(height: 32),
+
+          // Comments
+          Text('Commentaires', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+
+          if (authUser != null) _CommentInput(ctrl: _commentCtrl, submitting: _submittingComment, onSubmit: _submitComment),
+          if (authUser != null) const SizedBox(height: 12),
+
+          commentsAsync.when(
+            loading: () => const LoadingOverlay(),
+            error: (e, _) => Text('Erreur : $e'),
+            data: (comments) => comments.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Aucun commentaire. Soyez le premier !',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
+                  )
+                : Column(
+                    children: comments.map((c) => _CommentTile(comment: c)).toList(),
+                  ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+class _RatingSection extends StatelessWidget {
+  final Remedy remedy;
+  final AsyncValue<int?> userRatingAsync;
+  final void Function(double) onRate;
+
+  const _RatingSection({
+    required this.remedy,
+    required this.userRatingAsync,
+    required this.onRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Note moyenne', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            RatingBarIndicator(
+              rating: remedy.averageRating,
+              itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
+              itemCount: 5,
+              itemSize: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              remedy.averageRating > 0
+                  ? '${remedy.averageRating.toStringAsFixed(1)} / 5 (${remedy.ratingCount} votes)'
+                  : 'Non noté',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text('Votre note :', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        userRatingAsync.when(
+          loading: () => const SizedBox(height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
+          error: (_, __) => const SizedBox(),
+          data: (userRating) => RatingBar.builder(
+            initialRating: userRating?.toDouble() ?? 0,
+            minRating: 1,
+            itemCount: 5,
+            itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
+            onRatingUpdate: onRate,
+            itemSize: 32,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommentInput extends StatelessWidget {
+  final TextEditingController ctrl;
+  final bool submitting;
+  final VoidCallback onSubmit;
+
+  const _CommentInput({required this.ctrl, required this.submitting, required this.onSubmit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: ctrl,
+            maxLines: 3,
+            minLines: 1,
+            decoration: const InputDecoration(
+              hintText: 'Ajouter un commentaire…',
+              labelText: 'Commentaire',
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          onPressed: submitting ? null : onSubmit,
+          icon: submitting
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.send),
+          style: IconButton.styleFrom(backgroundColor: AppColors.primary),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommentTile extends ConsumerWidget {
+  final Comment comment;
+  const _CommentTile({required this.comment});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final isOwn = authUser?.uid == comment.authorId;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryLight,
+            child: Text(
+              comment.authorName.isNotEmpty ? comment.authorName[0].toUpperCase() : '?',
+              style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(comment.authorName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Text(
+                      DateFormat('dd/MM/yy').format(comment.createdAt),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
+                    if (isOwn) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () async {
+                          await ref
+                              .read(commentServiceProvider)
+                              .deleteComment(comment.remedyId, comment.id);
+                        },
+                        child: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                      ),
+                    ] else if (authUser != null) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () async {
+                          await ref
+                              .read(commentServiceProvider)
+                              .reportComment(comment.remedyId, comment.id, authUser.uid);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Commentaire signalé.')),
+                            );
+                          }
+                        },
+                        child: const Icon(Icons.flag_outlined, size: 16, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(comment.content, style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
