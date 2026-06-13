@@ -1,31 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../models/remedy.dart';
 import '../../providers/providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/medical_disclaimer.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/web_app_bar.dart';
 import '../../core/constants.dart';
 
-class CreateRemedyScreen extends ConsumerStatefulWidget {
-  const CreateRemedyScreen({super.key});
+class EditRemedyScreen extends ConsumerStatefulWidget {
+  final Remedy remedy;
+  const EditRemedyScreen({super.key, required this.remedy});
 
   @override
-  ConsumerState<CreateRemedyScreen> createState() => _CreateRemedyScreenState();
+  ConsumerState<EditRemedyScreen> createState() => _EditRemedyScreenState();
 }
 
-class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
+class _EditRemedyScreenState extends ConsumerState<EditRemedyScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _methodCtrl = TextEditingController();
-  final _ingredientCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _methodCtrl;
+  final TextEditingController _ingredientCtrl = TextEditingController();
 
-  final List<String> _ingredients = [];
-  final Set<String> _selectedTags = {};
+  late List<String> _ingredients;
+  late Set<String> _selectedTags;
+  late bool _isPrivate;
   bool _loading = false;
-  bool _isPrivate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.remedy;
+    _titleCtrl = TextEditingController(text: r.title);
+    _descCtrl = TextEditingController(text: r.description);
+    _methodCtrl = TextEditingController(text: r.method);
+    _ingredients = List<String>.from(r.ingredients);
+    _selectedTags = Set<String>.from(r.tags);
+    _isPrivate = r.isPrivate;
+  }
 
   @override
   void dispose() {
@@ -60,30 +73,40 @@ class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
       return;
     }
 
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null) return;
-    final profile = await ref.read(currentUserProfileProvider.future);
-
     setState(() => _loading = true);
     try {
-      final remedy = await ref.read(remedyServiceProvider).createRemedy(
-            title: _titleCtrl.text.trim(),
-            description: _descCtrl.text.trim(),
-            ingredients: _ingredients,
-            method: _methodCtrl.text.trim(),
-            tags: _selectedTags.toList(),
-            authorId: user.uid,
-            authorName: profile?.pseudo ?? 'Anonyme',
-            isPrivate: _isPrivate,
-            authorIsPremium: profile?.isPremium ?? false,
-          );
-      ref.invalidate(remediesProvider);
-      ref.invalidate(currentUserProfileProvider);
+      final updated = Remedy(
+        id: widget.remedy.id,
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        ingredients: _ingredients,
+        method: _methodCtrl.text.trim(),
+        tags: _selectedTags.toList(),
+        authorId: widget.remedy.authorId,
+        authorName: widget.remedy.authorName,
+        createdAt: widget.remedy.createdAt,
+        averageRating: widget.remedy.averageRating,
+        ratingCount: widget.remedy.ratingCount,
+        commentCount: widget.remedy.commentCount,
+        imageUrl: widget.remedy.imageUrl,
+        isReported: widget.remedy.isReported,
+        isPrivate: _isPrivate,
+        authorIsPremium: widget.remedy.authorIsPremium,
+      );
+
+      await ref.read(remedyServiceProvider).updateRemedy(updated);
+
+      ref.invalidate(remedyByIdProvider(updated.id));
+      ref.invalidate(userRemediesProvider);
+      ref.invalidate(remedyFeedProvider);
+
+      // Re-analyse en arrière-plan avec les nouvelles données
       // ignore: unawaited_futures
-      ref.read(groqServiceProvider).analyzeRemedy(remedy);
+      ref.read(groqServiceProvider).analyzeRemedy(updated, forceRefresh: true);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Remède partagé avec succès !')),
+          const SnackBar(content: Text('Remède mis à jour !')),
         );
         context.pop();
       }
@@ -104,15 +127,12 @@ class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
         ref.watch(currentUserProfileProvider).valueOrNull?.isPremium ?? false;
 
     return AppScaffold(
-      appBar: const WebAppBar(title: Text('Partager un remède')),
+      appBar: const WebAppBar(title: Text('Modifier le remède')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const MedicalDisclaimer(),
-            const SizedBox(height: 20),
-
             TextFormField(
               controller: _titleCtrl,
               decoration: const InputDecoration(labelText: 'Titre du remède *'),
@@ -210,7 +230,6 @@ class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Toggle remède privé (premium uniquement)
             if (isPremium)
               Container(
                 decoration: BoxDecoration(
@@ -247,7 +266,7 @@ class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
                         width: 20,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : const Text('Partager le remède'),
+                    : const Text('Enregistrer les modifications'),
               ),
             ),
             const SizedBox(height: 32),

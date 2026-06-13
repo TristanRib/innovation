@@ -8,32 +8,52 @@ class RemedyCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(height: 16, width: double.infinity, color: Colors.white),
-              const SizedBox(height: 8),
-              Container(height: 12, width: 200, color: Colors.white),
-              const SizedBox(height: 12),
-              Row(
+      baseColor: const Color(0xFFEEEEEE),
+      highlightColor: const Color(0xFFFAFAFA),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(height: 90, color: Colors.white),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(height: 24, width: 60, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Container(height: 24, width: 60, color: Colors.white),
+                  Container(height: 15, width: double.infinity, decoration: _box),
+                  const SizedBox(height: 6),
+                  Container(height: 13, width: 160, decoration: _box),
+                  const SizedBox(height: 10),
+                  Container(height: 13, width: double.infinity, decoration: _box),
+                  const SizedBox(height: 4),
+                  Container(height: 13, width: 120, decoration: _box),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Container(height: 20, width: 56, decoration: _box),
+                    const SizedBox(width: 6),
+                    Container(height: 20, width: 48, decoration: _box),
+                  ]),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  BoxDecoration get _box => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+      );
 }
 
 class LoadingOverlay extends StatelessWidget {

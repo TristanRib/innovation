@@ -42,5 +42,5 @@ class Comment extends Equatable {
       };
 
   @override
-  List<Object?> get props => [id, content, createdAt];
+  List<Object?> get props => [id, remedyId, authorId, authorName, content, createdAt, isReported];
 }

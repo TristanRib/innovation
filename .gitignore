@@ -7,6 +7,10 @@ flutter/lib/config.dart
 google-services.json
 GoogleService-Info.plist
 
+# ── Node / Seed ───────────────────────────────────────────────────────────────
+node_modules/
+flutter/seed/node_modules/
+
 # ── Flutter / Dart ────────────────────────────────────────────────────────────
 .dart_tool/
 .packages

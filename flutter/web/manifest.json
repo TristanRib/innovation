@@ -1,13 +1,14 @@
 {
-    "name": "remedia",
-    "short_name": "remedia",
+    "name": "Remedia — Remèdes naturels",
+    "short_name": "Remedia",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F1F8E9",
+    "theme_color": "#4CAF50",
+    "description": "Consultez et partagez des remèdes naturels et traditionnels.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "lang": "fr",
     "icons": [
         {
             "src": "icons/Icon-192.png",

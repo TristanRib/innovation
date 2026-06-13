@@ -8,6 +8,8 @@ class UserProfile extends Equatable {
   final List<String> favoriteRemedyIds;
   final int createdRemediesCount;
   final DateTime createdAt;
+  final bool isPremium;
+  final List<String> followedTags;
 
   const UserProfile({
     required this.uid,
@@ -16,6 +18,8 @@ class UserProfile extends Equatable {
     this.favoriteRemedyIds = const [],
     this.createdRemediesCount = 0,
     required this.createdAt,
+    this.isPremium = false,
+    this.followedTags = const [],
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -27,6 +31,8 @@ class UserProfile extends Equatable {
       favoriteRemedyIds: List<String>.from(data['favoriteRemedyIds'] as List? ?? []),
       createdRemediesCount: data['createdRemediesCount'] as int? ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isPremium: data['isPremium'] as bool? ?? false,
+      followedTags: List<String>.from(data['followedTags'] as List? ?? []),
     );
   }
 
@@ -36,12 +42,16 @@ class UserProfile extends Equatable {
         'favoriteRemedyIds': favoriteRemedyIds,
         'createdRemediesCount': createdRemediesCount,
         'createdAt': Timestamp.fromDate(createdAt),
+        'isPremium': isPremium,
+        'followedTags': followedTags,
       };
 
   UserProfile copyWith({
     String? pseudo,
     List<String>? favoriteRemedyIds,
     int? createdRemediesCount,
+    bool? isPremium,
+    List<String>? followedTags,
   }) =>
       UserProfile(
         uid: uid,
@@ -50,8 +60,10 @@ class UserProfile extends Equatable {
         favoriteRemedyIds: favoriteRemedyIds ?? this.favoriteRemedyIds,
         createdRemediesCount: createdRemediesCount ?? this.createdRemediesCount,
         createdAt: createdAt,
+        isPremium: isPremium ?? this.isPremium,
+        followedTags: followedTags ?? this.followedTags,
       );
 
   @override
-  List<Object?> get props => [uid, pseudo, favoriteRemedyIds, createdRemediesCount];
+  List<Object?> get props => [uid, pseudo, email, favoriteRemedyIds, createdRemediesCount, createdAt, isPremium, followedTags];
 }

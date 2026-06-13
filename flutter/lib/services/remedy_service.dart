@@ -1,14 +1,19 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../models/remedy.dart';
 
 enum RemediaSortBy { newest, topRated, mostCommented }
 
+const kPageSize = 12;
+
+class RemedyPage {
+  final List<Remedy> items;
+  final DocumentSnapshot? cursor;
+  const RemedyPage({required this.items, this.cursor});
+}
+
 class RemedyService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final _uuid = const Uuid();
 
   CollectionReference get _collection => _db.collection('remedies');
@@ -32,9 +37,39 @@ class RemedyService {
         query = query.orderBy('createdAt', descending: true);
         break;
     }
-    return query.snapshots().map(
-          (snap) => snap.docs.map((d) => Remedy.fromFirestore(d)).toList(),
-        );
+    return query.snapshots().map((snap) =>
+        snap.docs.map((d) => Remedy.fromFirestore(d)).where((r) => !r.isPrivate).toList());
+  }
+
+  Future<RemedyPage> fetchPage({
+    String? tag,
+    RemediaSortBy sortBy = RemediaSortBy.newest,
+    DocumentSnapshot? cursor,
+  }) async {
+    Query query = _collection.where('isReported', isEqualTo: false);
+    if (tag != null && tag.isNotEmpty) {
+      query = query.where('tags', arrayContains: tag);
+    }
+    switch (sortBy) {
+      case RemediaSortBy.topRated:
+        query = query.orderBy('averageRating', descending: true);
+        break;
+      case RemediaSortBy.mostCommented:
+        query = query.orderBy('commentCount', descending: true);
+        break;
+      case RemediaSortBy.newest:
+        query = query.orderBy('createdAt', descending: true);
+        break;
+    }
+    if (cursor != null) query = query.startAfterDocument(cursor);
+    final snap = await query.limit(kPageSize).get();
+    return RemedyPage(
+      items: snap.docs
+          .map((d) => Remedy.fromFirestore(d))
+          .where((r) => !r.isPrivate)
+          .toList(),
+      cursor: snap.docs.isNotEmpty ? snap.docs.last : null,
+    );
   }
 
   Future<List<Remedy>> search(String query) async {
@@ -53,6 +88,18 @@ class RemedyService {
         .toList();
   }
 
+  Future<List<Remedy>> getRemediesForTags({required List<String> tags}) async {
+    if (tags.isEmpty) return [];
+    final snap = await _collection
+        .where('tags', arrayContainsAny: tags.take(10).toList())
+        .limit(100)
+        .get();
+    return snap.docs
+        .map((d) => Remedy.fromFirestore(d))
+        .where((r) => !r.isPrivate && !r.isReported)
+        .toList();
+  }
+
   Future<Remedy> createRemedy({
     required String title,
     required String description,
@@ -61,15 +108,9 @@ class RemedyService {
     required List<String> tags,
     required String authorId,
     required String authorName,
-    File? imageFile,
+    bool isPrivate = false,
+    bool authorIsPremium = false,
   }) async {
-    String? imageUrl;
-    if (imageFile != null) {
-      final ref = _storage.ref('remedies/${_uuid.v4()}');
-      await ref.putFile(imageFile);
-      imageUrl = await ref.getDownloadURL();
-    }
-
     final id = _uuid.v4();
     final remedy = Remedy(
       id: id,
@@ -81,7 +122,8 @@ class RemedyService {
       authorId: authorId,
       authorName: authorName,
       createdAt: DateTime.now(),
-      imageUrl: imageUrl,
+      isPrivate: isPrivate,
+      authorIsPremium: authorIsPremium,
     );
     await _collection.doc(id).set(remedy.toFirestore());
 
@@ -157,6 +199,23 @@ class RemedyService {
         .orderBy('createdAt', descending: true)
         .get();
     return snap.docs.map((d) => Remedy.fromFirestore(d)).toList();
+  }
+
+  Future<Remedy?> getById(String id) async {
+    final doc = await _collection.doc(id).get();
+    if (!doc.exists) return null;
+    return Remedy.fromFirestore(doc);
+  }
+
+  Future<void> updateRemedy(Remedy remedy) async {
+    await _collection.doc(remedy.id).update({
+      'title': remedy.title,
+      'description': remedy.description,
+      'ingredients': remedy.ingredients,
+      'method': remedy.method,
+      'tags': remedy.tags,
+      'isPrivate': remedy.isPrivate,
+    });
   }
 
   Future<void> reportRemedy(String remedyId, String reporterId, String reason) async {

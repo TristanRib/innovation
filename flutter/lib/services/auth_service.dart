@@ -64,4 +64,8 @@ class AuthService {
   Future<void> updatePseudo(String uid, String pseudo) async {
     await _db.collection('users').doc(uid).update({'pseudo': pseudo});
   }
+
+  Future<void> updateFollowedTags(String uid, List<String> tags) async {
+    await _db.collection('users').doc(uid).update({'followedTags': tags});
+  }
 }

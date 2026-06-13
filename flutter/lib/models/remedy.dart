@@ -16,6 +16,8 @@ class Remedy extends Equatable {
   final int commentCount;
   final String? imageUrl;
   final bool isReported;
+  final bool isPrivate;
+  final bool authorIsPremium;
 
   const Remedy({
     required this.id,
@@ -32,6 +34,8 @@ class Remedy extends Equatable {
     this.commentCount = 0,
     this.imageUrl,
     this.isReported = false,
+    this.isPrivate = false,
+    this.authorIsPremium = false,
   });
 
   factory Remedy.fromFirestore(DocumentSnapshot doc) {
@@ -51,6 +55,8 @@ class Remedy extends Equatable {
       commentCount: data['commentCount'] as int? ?? 0,
       imageUrl: data['imageUrl'] as String?,
       isReported: data['isReported'] as bool? ?? false,
+      isPrivate: data['isPrivate'] as bool? ?? false,
+      authorIsPremium: data['authorIsPremium'] as bool? ?? false,
     );
   }
 
@@ -68,6 +74,8 @@ class Remedy extends Equatable {
         'commentCount': commentCount,
         if (imageUrl != null) 'imageUrl': imageUrl,
         'isReported': isReported,
+        'isPrivate': isPrivate,
+        'authorIsPremium': authorIsPremium,
       };
 
   Remedy copyWith({
@@ -91,8 +99,14 @@ class Remedy extends Equatable {
         commentCount: commentCount ?? this.commentCount,
         imageUrl: imageUrl ?? this.imageUrl,
         isReported: isReported,
+        isPrivate: isPrivate,
+        authorIsPremium: authorIsPremium,
       );
 
   @override
-  List<Object?> get props => [id, title, averageRating, ratingCount, commentCount];
+  List<Object?> get props => [
+        id, title, description, authorId, tags, createdAt,
+        averageRating, ratingCount, commentCount, isReported,
+        isPrivate, authorIsPremium,
+      ];
 }

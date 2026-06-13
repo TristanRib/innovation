@@ -9,6 +9,9 @@ import '../../providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/medical_disclaimer.dart';
 import '../../core/widgets/loading_widget.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/web_app_bar.dart';
+import '../../services/pdf_service.dart';
 import 'widgets/ai_analysis_widget.dart';
 
 class RemedyDetailScreen extends ConsumerStatefulWidget {
@@ -22,6 +25,7 @@ class RemedyDetailScreen extends ConsumerStatefulWidget {
 class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
   final _commentCtrl = TextEditingController();
   bool _submittingComment = false;
+  bool _submittingRating = false;
 
   @override
   void dispose() {
@@ -47,23 +51,62 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
             content: content,
           );
       _commentCtrl.clear();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible d\'envoyer le commentaire.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submittingComment = false);
     }
   }
 
   Future<void> _rate(double stars) async {
+    if (_submittingRating) return;
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) {
       context.push('/login');
       return;
     }
-    await ref.read(remedyServiceProvider).rateRemedy(
-          widget.remedy.id,
-          user.uid,
-          stars.round(),
+    setState(() => _submittingRating = true);
+    try {
+      await ref.read(remedyServiceProvider).rateRemedy(
+            widget.remedy.id,
+            user.uid,
+            stars.round(),
+          );
+      ref.invalidate(userRatingProvider(widget.remedy.id));
+      ref.invalidate(remedyByIdProvider(widget.remedy.id));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible d\'enregistrer la note.'),
+            backgroundColor: AppColors.error,
+          ),
         );
-    ref.invalidate(userRatingProvider(widget.remedy.id));
+      }
+    } finally {
+      if (mounted) setState(() => _submittingRating = false);
+    }
+  }
+
+  void _showAddToCollectionSheet(BuildContext context, String remedyId) {
+    final uid = ref.read(authStateProvider).valueOrNull?.uid;
+    if (uid == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AddToCollectionSheet(uid: uid, remedyId: remedyId),
+    );
   }
 
   void _showReportDialog() {
@@ -100,21 +143,35 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
           ),
         ],
       ),
-    );
+    ).then((_) => reasonCtrl.dispose());
   }
 
   @override
   Widget build(BuildContext context) {
-    final r = widget.remedy;
+    final r = ref.watch(remedyByIdProvider(widget.remedy.id)).valueOrNull ?? widget.remedy;
     final commentsAsync = ref.watch(commentsProvider(r.id));
     final userRatingAsync = ref.watch(userRatingProvider(r.id));
     final authUser = ref.watch(authStateProvider).valueOrNull;
+    final isPremium =
+        ref.watch(currentUserProfileProvider).valueOrNull?.isPremium ?? false;
 
-    return Scaffold(
-      appBar: AppBar(
+    return AppScaffold(
+      appBar: WebAppBar(
         title: Text(r.title, overflow: TextOverflow.ellipsis),
         actions: [
-          if (authUser != null)
+          if (isPremium)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: 'Exporter en PDF',
+              onPressed: () => PdfService().exportRemedy(r),
+            ),
+          if (authUser != null && authUser.uid == r.authorId)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Modifier',
+              onPressed: () => context.push('/edit-remedy', extra: r),
+            ),
+          if (authUser != null && authUser.uid != r.authorId)
             IconButton(
               icon: const Icon(Icons.flag_outlined),
               tooltip: 'Signaler',
@@ -182,6 +239,15 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
 
           // Analyse IA
           AiAnalysisWidget(remedy: r),
+          const SizedBox(height: 12),
+
+          // Ajouter à une collection (tous les utilisateurs connectés)
+          if (authUser != null)
+            OutlinedButton.icon(
+              onPressed: () => _showAddToCollectionSheet(context, r.id),
+              icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+              label: const Text('Ajouter à une collection'),
+            ),
           const SizedBox(height: 20),
 
           // Rating
@@ -243,6 +309,118 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
                   ),
           ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddToCollectionSheet extends ConsumerWidget {
+  final String uid;
+  final String remedyId;
+  const _AddToCollectionSheet({required this.uid, required this.remedyId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collectionsAsync = ref.watch(userCollectionsProvider);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+            child: Text('Ajouter à une collection',
+                style: Theme.of(context).textTheme.titleMedium),
+          ),
+          const Divider(),
+          collectionsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Erreur : $e'),
+            ),
+            data: (collections) => collections.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Text('Aucune collection — créez-en une ci-dessous.'),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: collections.length,
+                    itemBuilder: (_, i) {
+                      final col = collections[i];
+                      final contains = col.remedyIds.contains(remedyId);
+                      return CheckboxListTile(
+                        value: contains,
+                        title: Text(col.name),
+                        subtitle: Text('${col.remedyIds.length} remède(s)'),
+                        activeColor: AppColors.primary,
+                        onChanged: (_) async {
+                          final svc = ref.read(collectionServiceProvider);
+                          if (contains) {
+                            await svc.removeRemedy(uid, col.id, remedyId);
+                          } else {
+                            await svc.addRemedy(uid, col.id, remedyId);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.add, color: AppColors.primary, size: 18),
+            ),
+            title: const Text('Nouvelle collection'),
+            onTap: () async {
+              Navigator.pop(context);
+              final ctrl = TextEditingController();
+              await showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Nouvelle collection'),
+                  content: TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    decoration:
+                        const InputDecoration(hintText: 'Nom de la collection'),
+                  ),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Annuler')),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (ctrl.text.trim().isEmpty) return;
+                        final col = await ref
+                            .read(collectionServiceProvider)
+                            .create(uid, ctrl.text.trim());
+                        await ref
+                            .read(collectionServiceProvider)
+                            .addRemedy(uid, col.id, remedyId);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: const Text('Créer'),
+                    ),
+                  ],
+                ),
+              );
+              ctrl.dispose();
+            },
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -352,7 +530,6 @@ class _CommentTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authUser = ref.watch(authStateProvider).valueOrNull;
     final isOwn = authUser?.uid == comment.authorId;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -390,9 +567,30 @@ class _CommentTile extends ConsumerWidget {
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () async {
-                          await ref
-                              .read(commentServiceProvider)
-                              .deleteComment(comment.remedyId, comment.id);
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Supprimer le commentaire ?'),
+                              content: const Text('Cette action est irréversible.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Annuler'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.error),
+                                  child: const Text('Supprimer'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref
+                                .read(commentServiceProvider)
+                                .deleteComment(comment.remedyId, comment.id);
+                          }
                         },
                         child: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
                       ),
@@ -424,3 +622,4 @@ class _CommentTile extends ConsumerWidget {
     );
   }
 }
+

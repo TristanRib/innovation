@@ -25,30 +25,31 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // TODO: Remplacer par vos vraies valeurs après "flutterfire configure"
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyBaw-3DAatPFwNoLNXlreyKlDJ4OKX9m10',
+    appId: '1:360416043038:web:8cd253b947ae2cced10e0f',
+    messagingSenderId: '360416043038',
+    projectId: 'innovation-dda6d',
+    authDomain: 'innovation-dda6d.firebaseapp.com',
+    storageBucket: 'innovation-dda6d.firebasestorage.app',
+    measurementId: 'G-1Z1RM6B8Q2',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyAIx_hAm4j6HtYWxA3CamWb6h86g3OtEkg',
+    appId: '1:360416043038:android:2cd1ce218097d344d10e0f',
+    messagingSenderId: '360416043038',
+    projectId: 'innovation-dda6d',
+    storageBucket: 'innovation-dda6d.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    iosBundleId: 'com.remedia.app',
+    apiKey: 'AIzaSyD5eNuVlug5VDdhp_s_FHqDrCwS7Sen08g',
+    appId: '1:360416043038:ios:11a04ceabef2a2d6d10e0f',
+    messagingSenderId: '360416043038',
+    projectId: 'innovation-dda6d',
+    storageBucket: 'innovation-dda6d.firebasestorage.app',
+    iosBundleId: 'com.remedia.remedia',
   );
+
 }

@@ -14,106 +14,71 @@ class AiAnalysisWidget extends ConsumerStatefulWidget {
 }
 
 class _AiAnalysisWidgetState extends ConsumerState<AiAnalysisWidget> {
-  bool _requested = false;
+  bool _triggered = false;
 
   @override
   Widget build(BuildContext context) {
-    if (!_requested) {
-      return _TriggerButton(onTap: () => setState(() => _requested = true));
-    }
+    final profileAsync = ref.watch(currentUserProfileProvider);
+    final isPremium = profileAsync.valueOrNull?.isPremium ?? false;
 
-    final analysisAsync = ref.watch(aiAnalysisProvider(widget.remedy));
+    if (!isPremium) return const _PremiumLockedCard();
 
+    final analysisAsync = ref.watch(remedyAnalysisProvider(widget.remedy.id));
     return analysisAsync.when(
-      loading: () => const _LoadingCard(),
-      error: (e, _) => _ErrorCard(error: e.toString()),
-      data: (analysis) => _AnalysisCard(analysis: analysis),
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (analysis) {
+        if (analysis == null && !_triggered) {
+          _triggered = true;
+          Future.microtask(() {
+            // ignore: unawaited_futures
+            ref.read(groqServiceProvider).analyzeRemedy(widget.remedy);
+          });
+        }
+        return analysis == null ? const SizedBox.shrink() : _AnalysisCard(analysis: analysis);
+      },
     );
   }
 }
 
-// ── Bouton déclencheur ────────────────────────────────────────────────────────
+// ── Carte premium verrouillée ─────────────────────────────────────────────────
 
-class _TriggerButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _TriggerButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.auto_awesome, size: 18),
-      label: const Text('Analyse IA — effets & contre-indications'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primaryDark,
-        side: const BorderSide(color: AppColors.primary),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      ),
-    );
-  }
-}
-
-// ── Chargement ────────────────────────────────────────────────────────────────
-
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
+class _PremiumLockedCard extends StatelessWidget {
+  const _PremiumLockedCard();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight.withOpacity(0.2),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primaryLight),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
         children: [
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-          ),
+          const Icon(Icons.lock_outline, color: AppColors.primaryDark, size: 28),
           const SizedBox(width: 12),
-          Text(
-            'Analyse en cours…',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColors.primaryDark),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Erreur ────────────────────────────────────────────────────────────────────
-
-class _ErrorCard extends StatelessWidget {
-  final String error;
-  const _ErrorCard({required this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFEBEE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              'Analyse indisponible. Vérifiez votre connexion.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.error),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Analyse IA — Membres Premium',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Passez en Premium pour accéder à l\'analyse scientifique, aux effets documentés et aux contre-indications.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
             ),
           ),
         ],

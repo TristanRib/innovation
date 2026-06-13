@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../config.dart';
 import '../models/remedy.dart';
 import '../models/ai_analysis.dart';
@@ -8,31 +9,43 @@ import '../models/ai_analysis.dart';
 class GroqService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<AiAnalysis> analyzeRemedy(Remedy remedy) async {
-    // Vérifie le cache Firestore d'abord
-    final cached = await _loadCached(remedy.id);
-    if (cached != null) return cached;
+  Future<AiAnalysis> analyzeRemedy(Remedy remedy, {bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = await _loadCached(remedy.id);
+      if (cached != null) return cached;
+    }
 
     final analysis = await _callGroq(remedy);
-    await _saveToCache(remedy.id, analysis);
+    try {
+      await _saveToCache(remedy.id, analysis);
+    } catch (_) {
+      // Cache write failed (permissions or network) — return analysis anyway
+    }
     return analysis;
   }
 
+  Stream<AiAnalysis?> watchRemedyAnalysis(String remedyId) {
+    return _db
+        .collection('remedy_analyses')
+        .doc(remedyId)
+        .snapshots()
+        .map((doc) => doc.exists
+            ? AiAnalysis.fromMap(Map<String, dynamic>.from(doc.data()!))
+            : null);
+  }
+
   Future<AiAnalysis?> _loadCached(String remedyId) async {
-    final doc = await _db.collection('remedies').doc(remedyId).get();
-    final data = doc.data();
-    if (data == null || data['aiAnalysis'] == null) return null;
-    final map = Map<String, dynamic>.from(data['aiAnalysis'] as Map);
-    final generatedAt = DateTime.fromMillisecondsSinceEpoch(map['generatedAt'] as int);
-    // Expire après 30 jours
+    final doc = await _db.collection('remedy_analyses').doc(remedyId).get();
+    if (!doc.exists) return null;
+    final data = Map<String, dynamic>.from(doc.data()!);
+    final generatedAt = DateTime.fromMillisecondsSinceEpoch(data['generatedAt'] as int);
     if (DateTime.now().difference(generatedAt).inDays > 30) return null;
-    return AiAnalysis.fromMap(map);
+    return AiAnalysis.fromMap(data);
   }
 
   Future<void> _saveToCache(String remedyId, AiAnalysis analysis) async {
-    await _db.collection('remedies').doc(remedyId).update({
-      'aiAnalysis': analysis.toMap(),
-    });
+    if (FirebaseAuth.instance.currentUser == null) return;
+    await _db.collection('remedy_analyses').doc(remedyId).set(analysis.toMap());
   }
 
   Future<AiAnalysis> _callGroq(Remedy remedy) async {
@@ -66,7 +79,7 @@ class GroqService {
       throw Exception('Groq API error ${response.statusCode}: ${response.body}');
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     final content = body['choices'][0]['message']['content'] as String;
     final json = jsonDecode(content) as Map<String, dynamic>;
     return AiAnalysis.fromMap({...json, 'generatedAt': DateTime.now().millisecondsSinceEpoch});

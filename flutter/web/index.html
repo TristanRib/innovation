@@ -1,54 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="description" content="Remedia — Découvrez et partagez des remèdes naturels et traditionnels. Moteur de recherche par symptôme, notation communautaire, analyse IA.">
+  <meta name="keywords" content="remèdes naturels, grand-mère, phytothérapie, symptômes, santé naturelle">
+  <meta name="author" content="Remedia">
+  <meta name="theme-color" content="#4CAF50">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Open Graph -->
+  <meta property="og:title" content="Remedia — Remèdes naturels & traditionnels">
+  <meta property="og:description" content="Consultez et partagez des remèdes de grand-mère pour soulager vos petits maux du quotidien.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="icons/Icon-512.png">
+
+  <!-- PWA / iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="remedia">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Remedia">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>remedia</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="manifest" href="manifest.json">
 
+  <title>Remedia — Remèdes naturels</title>
+
+  <style>
+    /* Splash screen pendant le chargement Flutter */
+    body {
+      margin: 0;
+      background-color: #F1F8E9;
+      font-family: 'Nunito', sans-serif;
+    }
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 16px;
+      color: #388E3C;
+    }
+    #loading svg {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    #loading p {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.95); }
+    }
+  </style>
+
   <script>
-    // The value below is injected by flutter build, do not touch.
     const serviceWorkerVersion = null;
   </script>
-  <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>
 <body>
+  <!-- Splash affiché pendant le chargement de Flutter -->
+  <div id="loading">
+    <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="36" cy="36" r="36" fill="#C8E6C9"/>
+      <path d="M36 16C36 16 20 26 20 38C20 46.837 27.163 54 36 54C44.837 54 52 46.837 52 38C52 26 36 16 36 16Z" fill="#4CAF50"/>
+      <ellipse cx="30" cy="34" rx="5" ry="8" fill="#81C784" transform="rotate(-20 30 34)"/>
+    </svg>
+    <p>Remedia</p>
+  </div>
+
   <script>
-    window.addEventListener('load', function(ev) {
-      // Download main.dart.js
+    window.addEventListener('load', function () {
       _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
-        onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine().then(function(appRunner) {
+        serviceWorker: { serviceWorkerVersion },
+        onEntrypointLoaded: function (engineInitializer) {
+          engineInitializer.initializeEngine({
+            renderer: 'html'
+          }).then(function (appRunner) {
+            document.getElementById('loading').remove();
             appRunner.runApp();
           });
         }

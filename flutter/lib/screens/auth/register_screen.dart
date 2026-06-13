@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/utils/form_validators.dart';
+import '../../core/widgets/web_app_bar.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -49,7 +52,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_friendlyError(e.toString())), backgroundColor: AppColors.error),
+          SnackBar(content: Text(authErrorMessage(e.toString())), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -57,16 +60,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  String _friendlyError(String e) {
-    if (e.contains('email-already-in-use')) return 'Cet email est déjà utilisé.';
-    if (e.contains('weak-password')) return 'Mot de passe trop faible.';
-    return 'Une erreur est survenue.';
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Créer un compte')),
+    return AppScaffold(
+      appBar: const WebAppBar(title: Text('Créer un compte')),
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -89,8 +86,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     labelText: 'Pseudo',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
-                  validator: (v) =>
-                      v == null || v.trim().length < 2 ? 'Minimum 2 caractères' : null,
+                  validator: FormValidators.pseudo,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -100,8 +96,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      v == null || !v.contains('@') ? 'Email invalide' : null,
+                  validator: FormValidators.email,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -115,8 +110,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: (v) =>
-                      v == null || v.length < 6 ? 'Minimum 6 caractères' : null,
+                  validator: FormValidators.password,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
