@@ -130,9 +130,19 @@ class _AnalysisCard extends StatelessWidget {
                       ),
                 ),
                 const Spacer(),
-                _EvidenceBadge(level: analysis.evidenceLevel, color: analysis.evidenceColor),
-                const SizedBox(width: 8),
-                _SafetyBadge(score: analysis.safetyScore, color: analysis.safetyColor),
+                _InlineRow(
+                  icon: Icons.science_outlined,
+                  iconColor: analysis.evidenceColor,
+                  title: 'Preuves',
+                  value: analysis.evidenceLevel,
+                ),
+                const SizedBox(width: 16),
+                _InlineRow(
+                  icon: Icons.shield_outlined,
+                  iconColor: analysis.safetyColor,
+                  title: 'Sécurité',
+                  value: '${analysis.safetyScore}/5',
+                ),
               ],
             ),
           ),
@@ -165,14 +175,16 @@ class _AnalysisCard extends StatelessWidget {
                   ),
                 ],
 
-                const SizedBox(height: 12),
-                Text(
-                  'Généré par IA — à titre informatif uniquement.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-                ),
+                if (analysis.drugInteractions.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _Section(
+                    icon: Icons.medication_outlined,
+                    iconColor: const Color(0xFFD32F2F),
+                    title: 'Interactions médicamenteuses',
+                    items: analysis.drugInteractions,
+                  ),
+                ],
+
               ],
             ),
           ),
@@ -182,43 +194,32 @@ class _AnalysisCard extends StatelessWidget {
   }
 }
 
-class _EvidenceBadge extends StatelessWidget {
-  final String level;
-  final Color color;
-  const _EvidenceBadge({required this.level, required this.color});
+class _InlineRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String value;
+  const _InlineRow({required this.icon, required this.iconColor, required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Text(
-        level,
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _SafetyBadge extends StatelessWidget {
-  final int score;
-  final Color color;
-  const _SafetyBadge({required this.score, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      runSpacing: 2,
       children: [
-        Icon(Icons.shield_outlined, size: 14, color: color),
-        const SizedBox(width: 3),
-        Text(
-          '$score/5',
-          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700),
+        Icon(icon, size: 14, color: iconColor),
+        RichText(
+          text: TextSpan(
+            style: Theme.of(context).textTheme.bodySmall,
+            children: [
+              TextSpan(
+                text: '$title : ',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              TextSpan(text: value),
+            ],
+          ),
         ),
       ],
     );

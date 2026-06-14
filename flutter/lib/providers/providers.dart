@@ -5,11 +5,13 @@ import '../services/remedy_service.dart';
 import '../services/comment_service.dart';
 import '../services/groq_service.dart';
 import '../services/collection_service.dart';
+import '../services/publication_service.dart';
 import '../models/user_profile.dart';
 import '../models/remedy.dart';
 import '../models/comment.dart';
 import '../models/ai_analysis.dart';
 import '../models/user_collection.dart';
+import '../models/publication.dart';
 
 // ── Services ──────────────────────────────────────────────────────────────────
 
@@ -45,7 +47,8 @@ final remediesProvider = StreamProvider<List<Remedy>>((ref) {
 final searchResultsProvider = FutureProvider.autoDispose<List<Remedy>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.trim().isEmpty) return [];
-  return ref.read(remedyServiceProvider).search(query);
+  final results = await ref.read(remedyServiceProvider).search(query);
+  return _premiumFirst(results);
 });
 
 final userRatingProvider =
@@ -53,12 +56,6 @@ final userRatingProvider =
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
   return ref.read(remedyServiceProvider).getUserRating(remedyId, user.uid);
-});
-
-final favoritesProvider = FutureProvider.autoDispose<List<Remedy>>((ref) async {
-  final profile = await ref.watch(currentUserProfileProvider.future);
-  if (profile == null) return [];
-  return ref.read(remedyServiceProvider).getFavorites(profile.favoriteRemedyIds);
 });
 
 final userRemediesProvider = FutureProvider.autoDispose<List<Remedy>>((ref) async {
@@ -122,6 +119,12 @@ class RemedyFeedState {
       );
 }
 
+List<Remedy> _premiumFirst(List<Remedy> items) {
+  final premium = items.where((r) => r.authorIsPremium).toList();
+  final regular = items.where((r) => !r.authorIsPremium).toList();
+  return [...premium, ...regular];
+}
+
 class RemedyFeedNotifier extends AsyncNotifier<RemedyFeedState> {
   RemedyPage? _lastPage;
 
@@ -133,7 +136,7 @@ class RemedyFeedNotifier extends AsyncNotifier<RemedyFeedState> {
     final page = await ref.read(remedyServiceProvider).fetchPage(tag: tag, sortBy: sort);
     _lastPage = page;
     return RemedyFeedState(
-      items: page.items,
+      items: _premiumFirst(page.items),
       hasMore: page.items.length >= kPageSize,
     );
   }
@@ -152,7 +155,7 @@ class RemedyFeedNotifier extends AsyncNotifier<RemedyFeedState> {
       );
       _lastPage = page;
       state = AsyncData(RemedyFeedState(
-        items: [...current.items, ...page.items],
+        items: _premiumFirst([...current.items, ...page.items]),
         hasMore: page.items.length >= kPageSize,
       ));
     } catch (_) {
@@ -172,16 +175,18 @@ final userCollectionsProvider = StreamProvider.autoDispose<List<UserCollection>>
   return ref.watch(collectionServiceProvider).watchCollections(user.uid);
 });
 
-// ── Alertes ───────────────────────────────────────────────────────────────────
+// ── Publications ──────────────────────────────────────────────────────────────
 
-final newRemediesCountProvider = FutureProvider.autoDispose<int>((ref) async {
-  final profile = await ref.watch(currentUserProfileProvider.future);
-  if (profile == null || !profile.isPremium || profile.followedTags.isEmpty) return 0;
-  final cutoff = DateTime.now().subtract(const Duration(days: 7));
-  final remedies = await ref
-      .read(remedyServiceProvider)
-      .getRemediesForTags(tags: profile.followedTags);
-  return remedies.where((r) => r.createdAt.isAfter(cutoff)).length;
+final publicationServiceProvider =
+    Provider<PublicationService>((ref) => PublicationService());
+
+final publicationsProvider = StreamProvider<List<Publication>>((ref) {
+  return ref.watch(publicationServiceProvider).watchAll();
+});
+
+final publicationByIdProvider =
+    FutureProvider.autoDispose.family<Publication?, String>((ref, id) {
+  return ref.read(publicationServiceProvider).getById(id);
 });
 
 // ── IA (Groq) ─────────────────────────────────────────────────────────────────

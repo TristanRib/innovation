@@ -6,7 +6,6 @@ import '../../providers/providers.dart';
 import '../../models/user_profile.dart';
 import '../../models/user_collection.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/constants.dart';
 import '../../core/widgets/loading_widget.dart';
 import '../remedy/widgets/remedy_card.dart';
 
@@ -114,7 +113,7 @@ class _ProfileContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -122,7 +121,6 @@ class _ProfileContent extends ConsumerWidget {
           const TabBar(
             tabs: [
               Tab(text: 'Mes remèdes'),
-              Tab(text: 'Favoris'),
               Tab(text: 'Collections'),
             ],
           ),
@@ -130,7 +128,6 @@ class _ProfileContent extends ConsumerWidget {
             child: TabBarView(
               children: [
                 _UserRemediesTab(),
-                _FavoritesTab(),
                 _CollectionsTab(),
               ],
             ),
@@ -234,14 +231,14 @@ class _ProfileHeader extends ConsumerWidget {
                 onPressed: () async {
                   final confirm = await showDialog<bool>(
                     context: context,
-                    builder: (_) => AlertDialog(
+                    builder: (dialogCtx) => AlertDialog(
                       title: const Text('Se déconnecter ?'),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(context, false),
+                            onPressed: () => Navigator.pop(dialogCtx, false),
                             child: const Text('Annuler')),
                         ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
+                            onPressed: () => Navigator.pop(dialogCtx, true),
                             child: const Text('Déconnecter')),
                       ],
                     ),
@@ -265,14 +262,12 @@ class _ProfileHeader extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               _StatPill(
-                icon: Icons.favorite,
-                label: '${profile.favoriteRemedyIds.length} favoris',
+                icon: Icons.collections_bookmark,
+                label: '${widgetRef.watch(userCollectionsProvider).valueOrNull?.length ?? 0} collections',
               ),
             ],
           ),
 
-          // Alertes tags (premium only)
-          if (profile.isPremium) _FollowedTagsSection(profile: profile),
         ],
       ),
     );
@@ -321,28 +316,6 @@ class _UserRemediesTab extends ConsumerWidget {
               message: 'Vous n\'avez pas encore partagé de remède.',
               actionLabel: 'Partager maintenant',
               onAction: () => context.push('/create'),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-              gridDelegate: _kGrid,
-              itemCount: remedies.length,
-              itemBuilder: (_, i) => RemedyCard(remedy: remedies[i]),
-            ),
-    );
-  }
-}
-
-class _FavoritesTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final favoritesAsync = ref.watch(favoritesProvider);
-    return favoritesAsync.when(
-      loading: () => const LoadingOverlay(),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (remedies) => remedies.isEmpty
-          ? const _EmptyTab(
-              icon: Icons.favorite_outline,
-              message: 'Aucun remède en favori.',
             )
           : GridView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
@@ -481,64 +454,3 @@ class _CollectionCard extends StatelessWidget {
   }
 }
 
-// ── Followed tags section (premium, inside _ProfileHeader) ───────────────────
-
-class _FollowedTagsSection extends ConsumerWidget {
-  final UserProfile profile;
-  const _FollowedTagsSection({required this.profile});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final followed = Set<String>.from(profile.followedTags);
-
-    Future<void> toggleTag(String tag) async {
-      final uid = ref.read(authStateProvider).valueOrNull?.uid;
-      if (uid == null) return;
-      final updated = Set<String>.from(followed);
-      if (updated.contains(tag)) {
-        updated.remove(tag);
-      } else {
-        updated.add(tag);
-      }
-      await ref.read(authServiceProvider).updateFollowedTags(uid, updated.toList());
-      ref.invalidate(currentUserProfileProvider);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            const Icon(Icons.notifications_outlined, size: 16, color: AppColors.primaryDark),
-            const SizedBox(width: 6),
-            Text('Alertes par catégorie',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 4,
-          children: kAvailableTags.map((tag) {
-            final isOn = followed.contains(tag);
-            return FilterChip(
-              label: Text(tag, style: const TextStyle(fontSize: 12)),
-              selected: isOn,
-              onSelected: (_) => toggleTag(tag),
-              selectedColor: AppColors.primary,
-              labelStyle: TextStyle(
-                color: isOn ? Colors.white : AppColors.primaryDark,
-                fontWeight: FontWeight.w600,
-              ),
-              visualDensity: VisualDensity.compact,
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}

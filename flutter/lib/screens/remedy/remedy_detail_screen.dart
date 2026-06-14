@@ -113,7 +113,7 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
     final reasonCtrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Signaler ce remède'),
         content: TextField(
           controller: reasonCtrl,
@@ -121,7 +121,7 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
           maxLines: 3,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Annuler')),
           ElevatedButton(
             onPressed: () async {
               final user = ref.read(authStateProvider).valueOrNull;
@@ -155,10 +155,18 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
     final isPremium =
         ref.watch(currentUserProfileProvider).valueOrNull?.isPremium ?? false;
 
+    final isWide = MediaQuery.of(context).size.width >= 600;
+
     return AppScaffold(
       appBar: WebAppBar(
         title: Text(r.title, overflow: TextOverflow.ellipsis),
         actions: [
+          if (authUser != null)
+            IconButton(
+              icon: const Icon(Icons.bookmark_add_outlined),
+              tooltip: 'Ajouter à une collection',
+              onPressed: () => _showAddToCollectionSheet(context, r.id),
+            ),
           if (isPremium)
             IconButton(
               icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -179,7 +187,8 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
             ),
         ],
       ),
-      body: ListView(
+      body: SelectionArea(
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (r.imageUrl != null)
@@ -201,27 +210,23 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Description
-          Text('Description', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(r.description, style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 20),
-
-          // Ingredients
-          Text('Ingrédients', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          ...r.ingredients.map(
-            (ing) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+          // Description + Ingrédients (50/50 si large)
+          if (isWide)
+            IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.fiber_manual_record, size: 8, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(ing, style: Theme.of(context).textTheme.bodyLarge)),
+                  Expanded(child: _DescriptionBlock(remedy: r)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _IngredientsBlock(remedy: r)),
                 ],
               ),
-            ),
-          ),
+            )
+          else ...[
+            _DescriptionBlock(remedy: r),
+            const SizedBox(height: 20),
+            _IngredientsBlock(remedy: r),
+          ],
           const SizedBox(height: 20),
 
           // Method
@@ -241,20 +246,16 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
           AiAnalysisWidget(remedy: r),
           const SizedBox(height: 12),
 
-          // Ajouter à une collection (tous les utilisateurs connectés)
-          if (authUser != null)
-            OutlinedButton.icon(
-              onPressed: () => _showAddToCollectionSheet(context, r.id),
-              icon: const Icon(Icons.bookmark_add_outlined, size: 18),
-              label: const Text('Ajouter à une collection'),
-            ),
-          const SizedBox(height: 20),
+          // Collections contenant ce remède
+          if (authUser != null) _CollectionMemberships(remedyId: r.id),
+          if (authUser != null) const SizedBox(height: 20),
 
-          // Rating
+          // Rating (50/50 si large)
           _RatingSection(
             remedy: r,
             userRatingAsync: userRatingAsync,
             onRate: _rate,
+            isWide: isWide,
           ),
           const Divider(height: 32),
 
@@ -266,7 +267,9 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  onTap: () => context.push('/user/${r.authorId}'),
+                  onTap: () => authUser?.uid == r.authorId
+                      ? context.go('/profile')
+                      : context.push('/user/${r.authorId}'),
                   child: Text(r.authorName,
                       style: Theme.of(context)
                           .textTheme
@@ -322,6 +325,96 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
           const SizedBox(height: 32),
         ],
       ),
+      ),
+    );
+  }
+}
+
+class _DescriptionBlock extends StatelessWidget {
+  final Remedy remedy;
+  const _DescriptionBlock({required this.remedy});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Description', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Text(remedy.description, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+}
+
+class _IngredientsBlock extends StatelessWidget {
+  final Remedy remedy;
+  const _IngredientsBlock({required this.remedy});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ingrédients', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        ...remedy.ingredients.map(
+          (ing) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 7),
+                  child: Icon(Icons.fiber_manual_record, size: 8, color: AppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(ing, style: Theme.of(context).textTheme.bodyLarge)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CollectionMemberships extends ConsumerWidget {
+  final String remedyId;
+  const _CollectionMemberships({required this.remedyId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collections = ref
+            .watch(userCollectionsProvider)
+            .valueOrNull
+            ?.where((c) => c.remedyIds.contains(remedyId))
+            .toList() ??
+        [];
+    if (collections.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        const Icon(Icons.bookmark_rounded, size: 14, color: AppColors.primaryDark),
+        ...collections.map(
+          (c) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              c.name,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -396,11 +489,10 @@ class _AddToCollectionSheet extends ConsumerWidget {
             ),
             title: const Text('Nouvelle collection'),
             onTap: () async {
-              Navigator.pop(context);
               final ctrl = TextEditingController();
-              await showDialog(
+              final created = await showDialog<bool>(
                 context: context,
-                builder: (_) => AlertDialog(
+                builder: (dialogCtx) => AlertDialog(
                   title: const Text('Nouvelle collection'),
                   content: TextField(
                     controller: ctrl,
@@ -410,8 +502,9 @@ class _AddToCollectionSheet extends ConsumerWidget {
                   ),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Annuler')),
+                      onPressed: () => Navigator.pop(dialogCtx, false),
+                      child: const Text('Annuler'),
+                    ),
                     ElevatedButton(
                       onPressed: () async {
                         if (ctrl.text.trim().isEmpty) return;
@@ -421,7 +514,7 @@ class _AddToCollectionSheet extends ConsumerWidget {
                         await ref
                             .read(collectionServiceProvider)
                             .addRemedy(uid, col.id, remedyId);
-                        if (context.mounted) Navigator.pop(context);
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx, true);
                       },
                       child: const Text('Créer'),
                     ),
@@ -429,6 +522,7 @@ class _AddToCollectionSheet extends ConsumerWidget {
                 ),
               );
               ctrl.dispose();
+              if (created == true && context.mounted) Navigator.pop(context);
             },
           ),
           const SizedBox(height: 16),
@@ -442,52 +536,74 @@ class _RatingSection extends StatelessWidget {
   final Remedy remedy;
   final AsyncValue<int?> userRatingAsync;
   final void Function(double) onRate;
+  final bool isWide;
 
   const _RatingSection({
     required this.remedy,
     required this.userRatingAsync,
     required this.onRate,
+    this.isWide = false,
   });
+
+  Widget _averageBlock(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Note moyenne', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          RatingBarIndicator(
+            rating: remedy.averageRating,
+            itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
+            itemCount: 5,
+            itemSize: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            remedy.averageRating > 0
+                ? '${remedy.averageRating.toStringAsFixed(1)} / 5 (${remedy.ratingCount} votes)'
+                : 'Non noté',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      );
+
+  Widget _userBlock(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Votre note', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          userRatingAsync.when(
+            loading: () => const SizedBox(height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
+            error: (_, __) => const SizedBox(),
+            data: (userRating) => RatingBar.builder(
+              initialRating: userRating?.toDouble() ?? 0,
+              minRating: 1,
+              itemCount: 5,
+              itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
+              onRatingUpdate: onRate,
+              itemSize: 32,
+            ),
+          ),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
+    if (isWide) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _averageBlock(context)),
+          const SizedBox(width: 16),
+          Expanded(child: _userBlock(context)),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Note moyenne', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            RatingBarIndicator(
-              rating: remedy.averageRating,
-              itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
-              itemCount: 5,
-              itemSize: 24,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              remedy.averageRating > 0
-                  ? '${remedy.averageRating.toStringAsFixed(1)} / 5 (${remedy.ratingCount} votes)'
-                  : 'Non noté',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text('Votre note :', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 6),
-        userRatingAsync.when(
-          loading: () => const SizedBox(height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
-          error: (_, __) => const SizedBox(),
-          data: (userRating) => RatingBar.builder(
-            initialRating: userRating?.toDouble() ?? 0,
-            minRating: 1,
-            itemCount: 5,
-            itemBuilder: (_, __) => const Icon(Icons.star, color: Colors.amber),
-            onRatingUpdate: onRate,
-            itemSize: 32,
-          ),
-        ),
+        _averageBlock(context),
+        const SizedBox(height: 16),
+        _userBlock(context),
       ],
     );
   }
@@ -583,16 +699,16 @@ class _CommentTile extends ConsumerWidget {
                         onPressed: () async {
                           final confirm = await showDialog<bool>(
                             context: context,
-                            builder: (_) => AlertDialog(
+                            builder: (dialogCtx) => AlertDialog(
                               title: const Text('Supprimer le commentaire ?'),
                               content: const Text('Cette action est irréversible.'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () => Navigator.pop(dialogCtx, false),
                                   child: const Text('Annuler'),
                                 ),
                                 ElevatedButton(
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () => Navigator.pop(dialogCtx, true),
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.error),
                                   child: const Text('Supprimer'),

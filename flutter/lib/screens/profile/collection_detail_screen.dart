@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/web_app_bar.dart';
 import '../../core/widgets/loading_widget.dart';
+import '../../services/collection_service.dart';
 import '../remedy/widgets/remedy_card.dart';
 
 const _kGrid = SliverGridDelegateWithMaxCrossAxisExtent(
@@ -27,21 +28,22 @@ class CollectionDetailScreen extends ConsumerWidget {
       appBar: WebAppBar(
         title: Text(collection.name),
         actions: [
+          if (collection.id != kFavoritesCollectionId)
           IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Supprimer la collection',
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
-                builder: (_) => AlertDialog(
+                builder: (dialogCtx) => AlertDialog(
                   title: const Text('Supprimer la collection ?'),
                   content: const Text('Les remèdes ne seront pas supprimés.'),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => Navigator.pop(dialogCtx, false),
                         child: const Text('Annuler')),
                     ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
+                      onPressed: () => Navigator.pop(dialogCtx, true),
                       style:
                           ElevatedButton.styleFrom(backgroundColor: AppColors.error),
                       child: const Text('Supprimer'),
@@ -86,27 +88,14 @@ class CollectionDetailScreen extends ConsumerWidget {
   }
 }
 
-class _CollectionRemedies extends ConsumerWidget {
+class _CollectionRemedies extends StatelessWidget {
   final UserCollection collection;
   final String? uid;
   const _CollectionRemedies({required this.collection, required this.uid});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final remediesAsync = ref.watch(favoritesProvider);
-    return remediesAsync.when(
-      loading: () => GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: _kGrid,
-        itemCount: 4,
-        itemBuilder: (_, __) => const RemedyCardSkeleton(),
-      ),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (_) {
-        // Charge les remèdes à partir de leurs IDs
-        return _RemedyIdGrid(ids: collection.remedyIds, collectionId: collection.id, uid: uid);
-      },
-    );
+  Widget build(BuildContext context) {
+    return _RemedyIdGrid(ids: collection.remedyIds, collectionId: collection.id, uid: uid);
   }
 }
 
@@ -120,7 +109,7 @@ class _RemedyIdGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.read(remedyServiceProvider);
     return FutureBuilder(
-      future: service.getFavorites(ids),
+      future: service.getByIds(ids),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return GridView.builder(

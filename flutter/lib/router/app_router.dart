@@ -15,7 +15,10 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/profile/collection_detail_screen.dart';
 import '../screens/profile/public_profile_screen.dart';
 import '../screens/remedy/edit_remedy_screen.dart';
+import '../screens/publications/publications_screen.dart';
+import '../screens/publications/publication_detail_screen.dart';
 import '../models/user_collection.dart';
+import '../models/publication.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -38,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
+          GoRoute(path: '/publications', builder: (_, __) => const PublicationsScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         ],
       ),
@@ -46,6 +50,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/user/:uid',
         builder: (context, state) =>
             PublicProfileScreen(uid: state.pathParameters['uid']!),
+      ),
+      GoRoute(
+        path: '/publication/:id',
+        builder: (context, state) {
+          final pub = state.extra as Publication?;
+          final id = state.pathParameters['id']!;
+          if (pub != null) return PublicationDetailScreen(publication: pub);
+          return _PublicationLoader(id: id);
+        },
       ),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
@@ -79,6 +92,27 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+class _PublicationLoader extends ConsumerWidget {
+  final String id;
+  const _PublicationLoader({required this.id});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(publicationByIdProvider(id));
+    return async.when(
+      loading: () => const AppScaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => const AppScaffold(
+        body: Center(child: Text('Publication introuvable.')),
+      ),
+      data: (pub) => pub == null
+          ? const AppScaffold(body: Center(child: Text('Publication introuvable.')))
+          : PublicationDetailScreen(publication: pub),
+    );
+  }
+}
 
 class _RemedyLoader extends ConsumerWidget {
   final String id;

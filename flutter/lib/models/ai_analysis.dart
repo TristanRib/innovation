@@ -4,6 +4,7 @@ class AiAnalysis {
   final String evidenceLevel;
   final List<String> provenBenefits;
   final List<String> contraindications;
+  final List<String> drugInteractions;
   final int safetyScore;
   final String summary;
   final DateTime generatedAt;
@@ -12,6 +13,7 @@ class AiAnalysis {
     required this.evidenceLevel,
     required this.provenBenefits,
     required this.contraindications,
+    this.drugInteractions = const [],
     required this.safetyScore,
     required this.summary,
     required this.generatedAt,
@@ -22,6 +24,7 @@ class AiAnalysis {
       evidenceLevel: map['evidenceLevel'] as String? ?? 'Inconnu',
       provenBenefits: List<String>.from(map['provenBenefits'] as List? ?? []),
       contraindications: List<String>.from(map['contraindications'] as List? ?? []),
+      drugInteractions: List<String>.from(map['drugInteractions'] as List? ?? []),
       safetyScore: (map['safetyScore'] as num?)?.toInt() ?? 3,
       summary: map['summary'] as String? ?? '',
       generatedAt: map['generatedAt'] != null
@@ -34,6 +37,7 @@ class AiAnalysis {
         'evidenceLevel': evidenceLevel,
         'provenBenefits': provenBenefits,
         'contraindications': contraindications,
+        'drugInteractions': drugInteractions,
         'safetyScore': safetyScore,
         'summary': summary,
         'generatedAt': generatedAt.millisecondsSinceEpoch,

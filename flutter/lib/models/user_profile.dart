@@ -5,7 +5,6 @@ class UserProfile extends Equatable {
   final String uid;
   final String email;
   final String pseudo;
-  final List<String> favoriteRemedyIds;
   final int createdRemediesCount;
   final DateTime createdAt;
   final bool isPremium;
@@ -15,7 +14,6 @@ class UserProfile extends Equatable {
     required this.uid,
     required this.email,
     required this.pseudo,
-    this.favoriteRemedyIds = const [],
     this.createdRemediesCount = 0,
     required this.createdAt,
     this.isPremium = false,
@@ -28,7 +26,6 @@ class UserProfile extends Equatable {
       uid: doc.id,
       email: data['email'] as String? ?? '',
       pseudo: data['pseudo'] as String? ?? 'Anonyme',
-      favoriteRemedyIds: List<String>.from(data['favoriteRemedyIds'] as List? ?? []),
       createdRemediesCount: data['createdRemediesCount'] as int? ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isPremium: data['isPremium'] as bool? ?? false,
@@ -39,7 +36,6 @@ class UserProfile extends Equatable {
   Map<String, dynamic> toFirestore() => {
         'email': email,
         'pseudo': pseudo,
-        'favoriteRemedyIds': favoriteRemedyIds,
         'createdRemediesCount': createdRemediesCount,
         'createdAt': Timestamp.fromDate(createdAt),
         'isPremium': isPremium,
@@ -48,7 +44,6 @@ class UserProfile extends Equatable {
 
   UserProfile copyWith({
     String? pseudo,
-    List<String>? favoriteRemedyIds,
     int? createdRemediesCount,
     bool? isPremium,
     List<String>? followedTags,
@@ -57,7 +52,6 @@ class UserProfile extends Equatable {
         uid: uid,
         email: email,
         pseudo: pseudo ?? this.pseudo,
-        favoriteRemedyIds: favoriteRemedyIds ?? this.favoriteRemedyIds,
         createdRemediesCount: createdRemediesCount ?? this.createdRemediesCount,
         createdAt: createdAt,
         isPremium: isPremium ?? this.isPremium,
@@ -65,5 +59,5 @@ class UserProfile extends Equatable {
       );
 
   @override
-  List<Object?> get props => [uid, pseudo, email, favoriteRemedyIds, createdRemediesCount, createdAt, isPremium, followedTags];
+  List<Object?> get props => [uid, pseudo, email, createdRemediesCount, createdAt, isPremium, followedTags];
 }

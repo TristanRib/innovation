@@ -70,7 +70,7 @@ class GroqService {
           {'role': 'user', 'content': prompt},
         ],
         'temperature': 0.3,
-        'max_tokens': 800,
+        'max_tokens': 1200,
         'response_format': {'type': 'json_object'},
       }),
     );
@@ -98,16 +98,17 @@ Catégories : ${remedy.tags.join(', ')}
 Réponds avec exactement ce JSON (aucun texte en dehors) :
 {
   "evidenceLevel": "Bien documenté" | "Limité" | "Anecdotique",
+  "summary": "Résumé factuel en 2-3 phrases claires",
   "provenBenefits": ["effet prouvé 1 (source)", "effet prouvé 2 (source)"],
   "contraindications": ["contre-indication 1", "contre-indication 2"],
-  "safetyScore": 1 à 5 (5 = très sûr),
-  "summary": "Résumé factuel en 2-3 phrases claires"
+  "drugInteractions": ["interaction 1 (médicament concerné)", "interaction 2 (médicament concerné)"],
+  "safetyScore": 1 à 5 (5 = très sûr)
 }
 
 Règles :
 - Cite des études ou sources reconnues quand disponibles (ex: "Cochrane 2020")
 - Si peu de preuves, indique "Anecdotique" honnêtement
-- Mentionne les interactions médicamenteuses importantes
+- drugInteractions : uniquement les interactions avec des médicaments courants, liste vide si aucune connue
 - Sois concis mais précis
 - NE répète pas que ce n'est pas un avis médical (c'est déjà affiché dans l'app)
 ''';

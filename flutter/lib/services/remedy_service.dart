@@ -171,22 +171,11 @@ class RemedyService {
     return doc.data()?['stars'] as int?;
   }
 
-  Future<void> toggleFavorite(String userId, String remedyId, bool isFavorite) async {
-    await _db.collection('users').doc(userId).update({
-      'favoriteRemedyIds': isFavorite
-          ? FieldValue.arrayUnion([remedyId])
-          : FieldValue.arrayRemove([remedyId]),
-    });
-  }
-
-  Future<List<Remedy>> getFavorites(List<String> ids) async {
+  Future<List<Remedy>> getByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
-    final chunks = <List<String>>[];
-    for (var i = 0; i < ids.length; i += 10) {
-      chunks.add(ids.sublist(i, i + 10 > ids.length ? ids.length : i + 10));
-    }
     final results = <Remedy>[];
-    for (final chunk in chunks) {
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, (i + 10).clamp(0, ids.length));
       final snap = await _collection.where(FieldPath.documentId, whereIn: chunk).get();
       results.addAll(snap.docs.map((d) => Remedy.fromFirestore(d)));
     }

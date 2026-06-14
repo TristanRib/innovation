@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../models/user_collection.dart';
 
+const kFavoritesCollectionId = 'favoris';
+
 class CollectionService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final _uuid = const Uuid();
@@ -35,5 +37,23 @@ class CollectionService {
 
   Future<void> delete(String uid, String collectionId) async {
     await _col(uid).doc(collectionId).delete();
+  }
+
+  Future<void> toggleFavorite(String uid, String remedyId, bool add) async {
+    final doc = _col(uid).doc(kFavoritesCollectionId);
+    final snap = await doc.get();
+    if (!snap.exists) {
+      await doc.set({
+        'name': 'Favoris',
+        'remedyIds': add ? [remedyId] : [],
+        'createdAt': Timestamp.now(),
+      });
+    } else {
+      await doc.update({
+        'remedyIds': add
+            ? FieldValue.arrayUnion([remedyId])
+            : FieldValue.arrayRemove([remedyId]),
+      });
+    }
   }
 }

@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "build/web",
+    "public": "flutter/build/web",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
@@ -20,11 +20,11 @@
         "default": {
           "projectId": "innovation-dda6d",
           "appId": "1:360416043038:android:2cd1ce218097d344d10e0f",
-          "fileOutput": "android/app/google-services.json"
+          "fileOutput": "flutter/android/app/google-services.json"
         }
       },
       "dart": {
-        "lib/firebase_options.dart": {
+        "flutter/lib/firebase_options.dart": {
           "projectId": "innovation-dda6d",
           "configurations": {
             "android": "1:360416043038:android:2cd1ce218097d344d10e0f",

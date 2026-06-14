@@ -15,11 +15,11 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoggedIn = ref.watch(authStateProvider).valueOrNull != null;
     final profile = ref.watch(currentUserProfileProvider).valueOrNull;
-    final newRemediesCount = ref.watch(newRemediesCountProvider).valueOrNull ?? 0;
 
     int selectedIndex = 0;
     if (location.startsWith('/search')) selectedIndex = 1;
-    if (location.startsWith('/profile')) selectedIndex = 2;
+    if (location.startsWith('/publications')) selectedIndex = 2;
+    if (location.startsWith('/profile')) selectedIndex = 3;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -65,6 +65,8 @@ class MainShell extends ConsumerWidget {
                       case 1:
                         context.go('/search');
                       case 2:
+                        context.go('/publications');
+                      case 3:
                         isLoggedIn ? context.go('/profile') : context.go('/login');
                     }
                   },
@@ -73,24 +75,25 @@ class MainShell extends ConsumerWidget {
                       icon: Icon(Icons.explore_outlined),
                       selectedIcon: Icon(Icons.explore),
                       label: 'Découvrir',
+                      tooltip: '',
                     ),
                     const NavigationDestination(
                       icon: Icon(Icons.search_outlined),
                       selectedIcon: Icon(Icons.search),
                       label: 'Recherche',
+                      tooltip: '',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.menu_book_outlined),
+                      selectedIcon: Icon(Icons.menu_book_rounded),
+                      label: 'Apprendre',
+                      tooltip: '',
                     ),
                     NavigationDestination(
-                      icon: Badge(
-                        isLabelVisible: newRemediesCount > 0,
-                        label: Text('$newRemediesCount'),
-                        child: Icon(isLoggedIn ? Icons.person_outline : Icons.login_outlined),
-                      ),
-                      selectedIcon: Badge(
-                        isLabelVisible: newRemediesCount > 0,
-                        label: Text('$newRemediesCount'),
-                        child: Icon(isLoggedIn ? Icons.person : Icons.login),
-                      ),
+                      icon: Icon(isLoggedIn ? Icons.person_outline : Icons.login_outlined),
+                      selectedIcon: Icon(isLoggedIn ? Icons.person : Icons.login),
                       label: isLoggedIn ? 'Profil' : 'Connexion',
+                      tooltip: '',
                     ),
                   ],
                 ),
