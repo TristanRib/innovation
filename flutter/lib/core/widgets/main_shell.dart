@@ -17,9 +17,8 @@ class MainShell extends ConsumerWidget {
     final profile = ref.watch(currentUserProfileProvider).valueOrNull;
 
     int selectedIndex = 0;
-    if (location.startsWith('/search')) selectedIndex = 1;
-    if (location.startsWith('/publications')) selectedIndex = 2;
-    if (location.startsWith('/profile')) selectedIndex = 3;
+    if (location.startsWith('/publications')) selectedIndex = 1;
+    if (location.startsWith('/profile')) selectedIndex = 2;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -63,10 +62,8 @@ class MainShell extends ConsumerWidget {
                       case 0:
                         context.go('/');
                       case 1:
-                        context.go('/search');
-                      case 2:
                         context.go('/publications');
-                      case 3:
+                      case 2:
                         isLoggedIn ? context.go('/profile') : context.go('/login');
                     }
                   },
@@ -75,12 +72,6 @@ class MainShell extends ConsumerWidget {
                       icon: Icon(Icons.explore_outlined),
                       selectedIcon: Icon(Icons.explore),
                       label: 'Découvrir',
-                      tooltip: '',
-                    ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.search_outlined),
-                      selectedIcon: Icon(Icons.search),
-                      label: 'Recherche',
                       tooltip: '',
                     ),
                     const NavigationDestination(

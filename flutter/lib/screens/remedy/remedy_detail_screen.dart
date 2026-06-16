@@ -109,6 +109,31 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
     );
   }
 
+  Future<void> _confirmDelete(String remedyId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Supprimer ce remède ?'),
+        content: const Text('Cette action est irréversible. Le remède sera définitivement supprimé.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      await ref.read(remedyServiceProvider).deleteRemedy(remedyId);
+      if (mounted) context.go('/');
+    }
+  }
+
   void _showReportDialog() {
     final reasonCtrl = TextEditingController();
     showDialog(
@@ -173,12 +198,18 @@ class _RemedyDetailScreenState extends ConsumerState<RemedyDetailScreen> {
               tooltip: 'Exporter en PDF',
               onPressed: () => PdfService().exportRemedy(r),
             ),
-          if (authUser != null && authUser.uid == r.authorId)
+          if (authUser != null && authUser.uid == r.authorId) ...[
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Modifier',
               onPressed: () => context.push('/edit-remedy', extra: r),
             ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              tooltip: 'Supprimer',
+              onPressed: () => _confirmDelete(r.id),
+            ),
+          ],
           if (authUser != null && authUser.uid != r.authorId)
             IconButton(
               icon: const Icon(Icons.flag_outlined),

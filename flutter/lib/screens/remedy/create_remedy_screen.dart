@@ -78,6 +78,8 @@ class _CreateRemedyScreenState extends ConsumerState<CreateRemedyScreen> {
             authorIsPremium: profile?.isPremium ?? false,
           );
       ref.invalidate(remediesProvider);
+      ref.invalidate(remedyFeedProvider);
+      ref.invalidate(userRemediesProvider);
       ref.invalidate(currentUserProfileProvider);
       // ignore: unawaited_futures
       ref.read(groqServiceProvider).analyzeRemedy(remedy);

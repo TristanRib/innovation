@@ -207,6 +207,10 @@ class RemedyService {
     });
   }
 
+  Future<void> deleteRemedy(String remedyId) async {
+    await _db.collection('remedies').doc(remedyId).delete();
+  }
+
   Future<void> reportRemedy(String remedyId, String reporterId, String reason) async {
     await _db.collection('reports').add({
       'reporterId': reporterId,

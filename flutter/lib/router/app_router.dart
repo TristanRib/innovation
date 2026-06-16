@@ -36,54 +36,94 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       // ── Shell (bottom nav) ──────────────────────────────────────────────────
       ShellRoute(
-        builder: (context, state, child) =>
-            MainShell(location: state.matchedLocation, child: child),
+        pageBuilder: (context, state, child) => NoTransitionPage(
+          key: state.pageKey,
+          child: MainShell(location: state.matchedLocation, child: child),
+        ),
         routes: [
-          GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
-          GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
-          GoRoute(path: '/publications', builder: (_, __) => const PublicationsScreen()),
-          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(
+            path: '/',
+            pageBuilder: (_, state) =>
+                NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
+          ),
+          GoRoute(
+            path: '/search',
+            pageBuilder: (_, state) =>
+                NoTransitionPage(key: state.pageKey, child: const SearchScreen()),
+          ),
+          GoRoute(
+            path: '/publications',
+            pageBuilder: (_, state) =>
+                NoTransitionPage(key: state.pageKey, child: const PublicationsScreen()),
+          ),
+          GoRoute(
+            path: '/profile',
+            pageBuilder: (_, state) =>
+                NoTransitionPage(key: state.pageKey, child: const ProfileScreen()),
+          ),
         ],
       ),
       // ── Standalone (full screen, no bottom nav) ─────────────────────────────
       GoRoute(
         path: '/user/:uid',
-        builder: (context, state) =>
-            PublicProfileScreen(uid: state.pathParameters['uid']!),
+        pageBuilder: (context, state) => NoTransitionPage(
+          key: state.pageKey,
+          child: PublicProfileScreen(uid: state.pathParameters['uid']!),
+        ),
       ),
       GoRoute(
         path: '/publication/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final pub = state.extra as Publication?;
           final id = state.pathParameters['id']!;
-          if (pub != null) return PublicationDetailScreen(publication: pub);
-          return _PublicationLoader(id: id);
+          return NoTransitionPage(
+            key: state.pageKey,
+            child: pub != null
+                ? PublicationDetailScreen(publication: pub)
+                : _PublicationLoader(id: id),
+          );
         },
       ),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      GoRoute(path: '/create', builder: (_, __) => const CreateRemedyScreen()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (_, state) =>
+            NoTransitionPage(key: state.pageKey, child: const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/register',
+        pageBuilder: (_, state) =>
+            NoTransitionPage(key: state.pageKey, child: const RegisterScreen()),
+      ),
+      GoRoute(
+        path: '/create',
+        pageBuilder: (_, state) =>
+            NoTransitionPage(key: state.pageKey, child: const CreateRemedyScreen()),
+      ),
       GoRoute(
         path: '/collection/:id',
-        builder: (context, state) {
-          final collection = state.extra as UserCollection;
-          return CollectionDetailScreen(collection: collection);
-        },
+        pageBuilder: (context, state) => NoTransitionPage(
+          key: state.pageKey,
+          child: CollectionDetailScreen(collection: state.extra as UserCollection),
+        ),
       ),
       GoRoute(
         path: '/edit-remedy',
-        builder: (context, state) {
-          final remedy = state.extra as Remedy;
-          return EditRemedyScreen(remedy: remedy);
-        },
+        pageBuilder: (context, state) => NoTransitionPage(
+          key: state.pageKey,
+          child: EditRemedyScreen(remedy: state.extra as Remedy),
+        ),
       ),
       GoRoute(
         path: '/remedy/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final remedy = state.extra as Remedy?;
           final id = state.pathParameters['id']!;
-          if (remedy != null) return RemedyDetailScreen(remedy: remedy);
-          return _RemedyLoader(id: id);
+          return NoTransitionPage(
+            key: state.pageKey,
+            child: remedy != null
+                ? RemedyDetailScreen(remedy: remedy)
+                : _RemedyLoader(id: id),
+          );
         },
       ),
     ],
